@@ -23,3 +23,16 @@ export interface VoiceSessionState {
   isListening: boolean;
   transcription: string;
 }
+
+export type IntensityStage = 1 | 2 | 3 | 4;
+
+export interface UserProfile {
+  ageRange?: string;
+  primaryRole?: string;
+  educationLevel?: string;
+  workType?: string;
+  careRole?: string;
+  stressFocus?: string[];
+  additionalContext?: string;
+  hasCompletedSetup?: boolean;
+}
