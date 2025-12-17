@@ -1,0 +1,7 @@
+{
+  "name": "NOVA CARE AI",
+  "description": "A compassionate psychology-focused AI designed for mental health support, providing empathetic listening, CBT techniques, and crisis resources.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
