@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
-import { Send, User, Sparkles, Loader2, Mic, MicOff, Settings2, Upload, Volume2, CheckCircle2, AlertCircle, Play, Square, UserCircle, ShieldAlert, ChevronRight, Info, X, Heart, UserPlus, ArrowRight } from 'lucide-react';
+import { Send, User, Sparkles, Loader2, Mic, MicOff, Settings2, Upload, Volume2, CheckCircle2, AlertCircle, Play, Square, UserCircle, ShieldAlert, ChevronRight, Info, X, Heart, UserPlus, ArrowRight, History, Plus, MessageSquare } from 'lucide-react';
 import { decode, encode, decodeAudioData, createPcmBlob } from '../utils/audio';
 import { SessionControls } from './SessionControls';
 import { CrisisModal } from './CrisisModal';
-import { Message, UserProfile, IntensityStage } from '../types';
+import { Message, UserProfile, IntensityStage, TherapySession } from '../types';
 
 const BASE_INSTRUCTION = `You are NOVA CARE AI — a psychological first-aid AI designed to provide immediate emotional support, grounding, and clarity during moments of distress. You are NOT a therapist, psychologist, psychiatrist, or medical professional, and you do NOT provide treatment or long-term mental health solutions.
 
@@ -78,6 +78,21 @@ export const TherapySpace: React.FC = () => {
   const [selectedVoice, setSelectedVoice] = useState('Zephyr');
   const [customVoice, setCustomVoice] = useState<{ name: string; url: string } | null>(null);
   
+  // Persistence
+  const [sessions, setSessions] = useState<TherapySession[]>(() => {
+    const saved = localStorage.getItem('nova_v3_sessions');
+    return saved ? JSON.parse(saved).map((s: any) => ({
+      ...s,
+      date: new Date(s.date),
+      messages: s.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
+    })) : [];
+  });
+
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const activeSession = sessions.find(s => s.id === activeSessionId);
+
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     const saved = localStorage.getItem('nova_v3_profile');
     return saved ? JSON.parse(saved) : {};
@@ -119,6 +134,10 @@ export const TherapySpace: React.FC = () => {
   }, [userProfile]);
 
   useEffect(() => {
+    localStorage.setItem('nova_v3_sessions', JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
@@ -133,10 +152,12 @@ export const TherapySpace: React.FC = () => {
     if (userProfile.careRole) context += `- Care Role: ${userProfile.careRole}\n`;
     if (userProfile.stressFocus?.length) context += `- Main focus areas: ${userProfile.stressFocus.join(', ')}\n`;
     if (userProfile.additionalContext) context += `- Personal note: ${userProfile.additionalContext}\n`;
-    if (intensity) context += `- Current Distress Intensity: Stage ${intensity}\n`;
+    
+    const sessionIntensity = intensity || (activeSession?.intensity);
+    if (sessionIntensity) context += `- Current Distress Intensity: Stage ${sessionIntensity}\n`;
     
     return BASE_INSTRUCTION + context;
-  }, [userProfile, intensity]);
+  }, [userProfile, intensity, activeSession]);
 
   const handleTriageResponse = async (level: IntensityStage) => {
     setIntensity(level);
@@ -144,17 +165,28 @@ export const TherapySpace: React.FC = () => {
     
     const label = level === 1 ? "Manageable" : level === 2 ? "Heavy" : level === 3 ? "Overwhelming" : "Critical";
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: label, timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
+    const initialMessages = [...messages, userMsg];
+    setMessages(initialMessages);
+
+    // Create a new session record
+    const newSession: TherapySession = {
+      id: Date.now().toString(),
+      date: new Date(),
+      intensity: level,
+      messages: initialMessages
+    };
+    setSessions(prev => [newSession, ...prev]);
+    setActiveSessionId(newSession.id);
 
     // Check if we should prompt for profile
     if (!userProfile.hasCompletedSetup) {
       setShowProfileSetup(true);
     } else {
-      await sendToModel(userMsg.content);
+      await sendToModel(userMsg.content, initialMessages);
     }
   };
 
-  const sendToModel = async (content: string) => {
+  const sendToModel = async (content: string, currentMessages: Message[]) => {
     setIsTyping(true);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -164,7 +196,13 @@ export const TherapySpace: React.FC = () => {
       });
       const response = await textChatRef.current.sendMessage({ message: content });
       const modelMsg: Message = { id: (Date.now() + 1).toString(), role: 'model', content: response.text || "I'm here.", timestamp: new Date() };
-      setMessages(prev => [...prev, modelMsg]);
+      
+      const updatedMessages = [...currentMessages, modelMsg];
+      setMessages(updatedMessages);
+      
+      // Update persistent session
+      setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, messages: updatedMessages } : s));
+      
     } catch (err) {
       setError('Connection issue.');
     } finally {
@@ -172,10 +210,33 @@ export const TherapySpace: React.FC = () => {
     }
   };
 
+  const startNewSession = () => {
+    setActiveSessionId(null);
+    setIntensity(null);
+    setHasCompletedTriage(false);
+    setShowHistory(false);
+    setMessages([
+      {
+        id: 'welcome',
+        role: 'model',
+        content: "Hi, I'm Nova. I'm here to support you right now. Before we continue, can you tell me how intense this feels for you today — manageable, heavy, or overwhelming?",
+        timestamp: new Date()
+      }
+    ]);
+  };
+
+  const selectSession = (session: TherapySession) => {
+    setActiveSessionId(session.id);
+    setMessages(session.messages);
+    setHasCompletedTriage(true);
+    setIntensity(session.intensity);
+    setShowHistory(false);
+  };
+
   const finalizeProfileSetup = () => {
     setUserProfile({ ...userProfile, hasCompletedSetup: true });
     setShowProfileSetup(false);
-    sendToModel("I've finished setting up my profile. Let's continue.");
+    sendToModel("I've finished setting up my profile. Let's continue.", messages);
   };
 
   const playVoiceSample = async (voiceName: string) => {
@@ -259,10 +320,15 @@ export const TherapySpace: React.FC = () => {
     if (!textInput.trim() || isTyping || !hasCompletedTriage) return;
     if (isDictating) { recognitionRef.current?.stop(); setIsDictating(false); }
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: textInput, timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    
+    // Optimistic persistent update
+    setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, messages: updatedMessages } : s));
+
     const currentInput = textInput;
     setTextInput('');
-    await sendToModel(currentInput);
+    await sendToModel(currentInput, updatedMessages);
   };
 
   const startVoiceSession = async () => {
@@ -470,8 +536,8 @@ export const TherapySpace: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto w-full flex flex-col items-center px-4">
       <div className="text-center mb-8">
-        <h2 className="text-4xl font-bold text-white mb-2">Nova Care Space</h2>
-        <p className="text-slate-400 max-w-lg mx-auto">Psychological first-aid. Grounding support during distress.</p>
+        <h2 className="text-4xl font-bold text-white mb-2">Nova Therapy Sessions</h2>
+        <p className="text-slate-400 max-w-lg mx-auto">Compassionate support & session history. Track your path to calm.</p>
       </div>
 
       <div className="w-full glass-panel rounded-[2.5rem] border border-white/10 flex flex-col overflow-hidden h-[75vh] relative shadow-2xl">
@@ -493,12 +559,74 @@ export const TherapySpace: React.FC = () => {
           </div>
         )}
 
+        {/* History Toggle Button */}
+        <button 
+          onClick={() => setShowHistory(!showHistory)}
+          className={`absolute top-4 left-4 z-30 p-2 transition-all rounded-full border shadow-sm ${showHistory ? 'bg-white text-slate-900 border-white' : 'bg-white/5 text-slate-400 hover:text-white border-white/10'}`}
+          title="Session History"
+        >
+          <History size={20} />
+        </button>
+
         <button 
           onClick={() => setShowSettings(!showSettings)}
           className={`absolute top-4 right-4 z-30 p-2 transition-all rounded-full border shadow-sm ${showSettings ? 'bg-white text-slate-900 border-white' : 'bg-white/5 text-slate-400 hover:text-white border-white/10'}`}
         >
           <Settings2 size={20} />
         </button>
+
+        {/* History Overlay */}
+        {showHistory && (
+          <div className="absolute inset-0 z-40 bg-slate-900/95 backdrop-blur-lg animate-in slide-in-from-left duration-300 p-8 flex flex-col">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-2xl font-bold text-white flex items-center gap-3">
+                <History size={24} className="text-[var(--primary)]" /> Session History
+              </h3>
+              <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-white/10 rounded-full text-slate-400"><X size={24}/></button>
+            </div>
+
+            <div className="flex-grow overflow-y-auto custom-scrollbar space-y-4 mb-6">
+              <button 
+                onClick={startNewSession}
+                className="w-full flex items-center gap-4 p-5 rounded-2xl bg-white/5 border border-dashed border-white/20 hover:bg-white/10 transition-all text-left group"
+              >
+                <div className="w-12 h-12 bg-[var(--primary)]/10 text-[var(--primary)] rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Plus size={24} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white">Start New Therapy Session</h4>
+                  <p className="text-xs text-slate-500">Begin fresh triage and support session</p>
+                </div>
+              </button>
+
+              {sessions.length === 0 ? (
+                <div className="text-center py-20 text-slate-500">
+                  <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />
+                  <p>No previous therapy sessions found.</p>
+                </div>
+              ) : (
+                sessions.map(s => (
+                  <button 
+                    key={s.id}
+                    onClick={() => selectSession(s)}
+                    className={`w-full flex items-center gap-4 p-5 rounded-2xl border transition-all text-left ${activeSessionId === s.id ? 'bg-[var(--primary)]/10 border-[var(--primary)]/50' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                  >
+                    <div className="w-12 h-12 bg-white/5 text-slate-400 rounded-xl flex items-center justify-center">
+                      <Heart size={20} className={s.intensity === 3 ? 'text-rose-400' : 'text-slate-400'} />
+                    </div>
+                    <div className="flex-grow">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-bold text-white">Session from {s.date.toLocaleDateString()}</h4>
+                        <span className="text-[10px] uppercase font-bold text-slate-500">Stage {s.intensity}</span>
+                      </div>
+                      <p className="text-xs text-slate-500 line-clamp-1">{s.messages[s.messages.length - 1]?.content}</p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
 
         {showSettings && (
           <div className="absolute top-16 right-4 z-20 w-80 glass-panel border border-white/10 shadow-2xl rounded-2xl p-5 animate-in fade-in slide-in-from-top-2 duration-200 overflow-y-auto max-h-[80%] custom-scrollbar">

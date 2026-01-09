@@ -26,6 +26,13 @@ export interface VoiceSessionState {
 
 export type IntensityStage = 1 | 2 | 3 | 4;
 
+export interface TherapySession {
+  id: string;
+  date: Date;
+  messages: Message[];
+  intensity: IntensityStage | null;
+}
+
 export interface UserProfile {
   ageRange?: string;
   primaryRole?: string;

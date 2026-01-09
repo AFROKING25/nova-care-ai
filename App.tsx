@@ -38,7 +38,7 @@ const App: React.FC = () => {
           <div className="text-center mb-10">
             <Logo size={80} className="mx-auto mb-6" />
             <h1 className="text-4xl font-bold mb-2 tracking-tight">NOVA CARE AI</h1>
-            <p className="text-slate-400 font-medium">Psychological First Aid & Support.</p>
+            <p className="text-slate-400 font-medium">Empathetic Therapy & Support.</p>
           </div>
 
           <div className="space-y-4">
@@ -74,7 +74,7 @@ const App: React.FC = () => {
           </div>
           
           <p className="mt-8 text-center text-xs text-slate-500 leading-relaxed px-4">
-            Nova Care AI provides psychological first aid, not clinical therapy. We support stages 1-3 distress.
+            Nova Care AI provides compassionate support and stabilization. Explore your therapy history anytime.
           </p>
         </div>
       </div>
@@ -105,7 +105,7 @@ const App: React.FC = () => {
                   className="px-8 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-xl"
                   style={{ backgroundColor: 'var(--primary)', color: '#000' }}
                 >
-                  Start Triage & Session
+                  Start Therapy Session
                 </button>
                 <button
                   onClick={() => setActiveTab('journal')}
@@ -123,21 +123,21 @@ const App: React.FC = () => {
                   <Brain size={32} />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Severity Staging</h3>
-                <p className="text-slate-400 leading-relaxed">Nova assesses your distress level early on to provide appropriate first aid or guide you to professional help.</p>
+                <p className="text-slate-400 leading-relaxed">Nova assesses your distress level early on to provide appropriate support or guide you to professional help.</p>
               </div>
               <div className="glass-panel p-10 rounded-[2.5rem] hover:bg-white/10 transition-all duration-300">
                 <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6" style={{ color: 'var(--primary)' }}>
                   <Shield size={32} />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">Context Awareness</h3>
-                <p className="text-slate-400 leading-relaxed">Personalize your profile as a student, professional, or caregiver so Nova can tailor language and grounding tools to your daily life.</p>
+                <h3 className="text-2xl font-bold mb-4">Therapy History</h3>
+                <p className="text-slate-400 leading-relaxed">Keep track of your journey. All past sessions are saved so you can review themes and progress over time.</p>
               </div>
               <div className="glass-panel p-10 rounded-[2.5rem] hover:bg-white/10 transition-all duration-300">
                 <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6" style={{ color: 'var(--primary)' }}>
                   <ShieldAlert size={32} />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Bridge to Care</h3>
-                <p className="text-slate-400 leading-relaxed">Designed as a "first aid" stabilization tool. When your distress exceeds stage 3, we prioritize your safety and professional connection.</p>
+                <p className="text-slate-400 leading-relaxed">Designed as a stabilization tool. When your distress exceeds stage 3, we prioritize your safety and professional connection.</p>
               </div>
             </div>
           </div>
@@ -156,7 +156,7 @@ const App: React.FC = () => {
 
           <div className="hidden md:flex items-center gap-8">
             <button onClick={() => setActiveTab('home')} className={`font-semibold transition-colors ${activeTab === 'home' ? 'text-white' : 'text-slate-500 hover:text-white'}`}>Home</button>
-            <button onClick={() => setActiveTab('session')} className={`font-semibold transition-colors ${activeTab === 'session' ? 'text-white' : 'text-slate-500 hover:text-white'}`}>First Aid Session</button>
+            <button onClick={() => setActiveTab('session')} className={`font-semibold transition-colors ${activeTab === 'session' ? 'text-white' : 'text-slate-500 hover:text-white'}`}>Therapy Session</button>
             <button onClick={() => setActiveTab('journal')} className={`font-semibold transition-colors ${activeTab === 'journal' ? 'text-white' : 'text-slate-500 hover:text-white'}`}>Reflection</button>
             
             <div className="flex items-center gap-2 p-1 bg-white/5 rounded-full border border-white/10">
@@ -191,10 +191,10 @@ const App: React.FC = () => {
               <Logo size={24} />
               <span className="font-bold text-lg uppercase tracking-widest">NOVA CARE AI</span>
             </div>
-            <p className="text-slate-500 text-sm">Psychological First Aid & Stabilization Companion.</p>
+            <p className="text-slate-500 text-sm">Compassionate Support & Therapy History Companion.</p>
           </div>
           <div className="text-center md:text-right space-y-2">
-            <p className="text-slate-600 text-[10px] max-w-xs md:ml-auto">NOVA CARE AI is an empathetic first-aid stabilization tool. Stage 1-3 Support only.</p>
+            <p className="text-slate-600 text-[10px] max-w-xs md:ml-auto">NOVA CARE AI is an empathetic support tool. Providing stabilization for Stage 1-3 distress.</p>
             <p className="text-slate-600 text-xs">© 2024 NOVA CARE AI. All rights reserved.</p>
           </div>
         </div>
